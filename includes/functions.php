@@ -1,3 +1,168 @@
 <?php
 
 declare(strict_types=1);
+
+function start_secure_session(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    $https = $_SERVER['HTTPS'] ?? '';
+    $secure = is_string($https) && !in_array(strtolower($https), ['', '0', 'off'], true);
+    $secure = $secure || (string) ($_SERVER['SERVER_PORT'] ?? '') === '443';
+
+    if (ini_set('session.use_strict_mode', '1') === false
+        || ini_set('session.use_only_cookies', '1') === false) {
+        throw new RuntimeException('Unable to enable secure session settings.');
+    }
+
+    if (!session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ])) {
+        throw new RuntimeException('Unable to configure secure session cookies.');
+    }
+
+    if (!session_start()) {
+        throw new RuntimeException('Unable to start the session.');
+    }
+}
+
+function sanitize(string|int|float|bool|null $data): string
+{
+    return htmlspecialchars((string) $data, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function format_rupiah(int|float|string $number): string
+{
+    if (!is_numeric($number)) {
+        throw new InvalidArgumentException('The amount must be numeric.');
+    }
+
+    $amount = (float) $number;
+    if (!is_finite($amount)) {
+        throw new InvalidArgumentException('The amount must be finite.');
+    }
+
+    return 'Rp ' . number_format($amount, 0, ',', '.');
+}
+
+function generate_order_code(): string
+{
+    return sprintf('ORD-%s-%03d', date('Ymd'), random_int(0, 999));
+}
+
+function generate_booking_code(): string
+{
+    return sprintf('BOOK-%s-%03d', date('Ymd'), random_int(0, 999));
+}
+
+function json_response(int $status, string $message, mixed $data = null): never
+{
+    if ($status < 100 || $status > 599) {
+        throw new InvalidArgumentException('The HTTP status code must be between 100 and 599.');
+    }
+
+    if (headers_sent()) {
+        throw new RuntimeException('Cannot send a JSON response after output has started.');
+    }
+
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+
+    echo json_encode(
+        [
+            'status' => $status,
+            'message' => $message,
+            'data' => $data,
+        ],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+    );
+    exit;
+}
+
+function upload_image(array $file, string $target_dir): string
+{
+    $maxSize = 2 * 1024 * 1024;
+    $allowedMimeTypes = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+    ];
+
+    if (!isset($file['error']) || !is_int($file['error'])) {
+        throw new InvalidArgumentException('Invalid upload data.');
+    }
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        $errors = [
+            UPLOAD_ERR_INI_SIZE => 'The uploaded file exceeds the server size limit.',
+            UPLOAD_ERR_FORM_SIZE => 'The uploaded file exceeds the form size limit.',
+            UPLOAD_ERR_PARTIAL => 'The uploaded file was only partially received.',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
+            UPLOAD_ERR_NO_TMP_DIR => 'The server upload directory is missing.',
+            UPLOAD_ERR_CANT_WRITE => 'The server could not save the uploaded file.',
+            UPLOAD_ERR_EXTENSION => 'A server extension stopped the upload.',
+        ];
+
+        throw new RuntimeException($errors[$file['error']] ?? 'The file upload failed.');
+    }
+
+    $temporaryPath = $file['tmp_name'] ?? null;
+    $originalName = $file['name'] ?? null;
+    if (!is_string($temporaryPath) || !is_string($originalName) || !is_uploaded_file($temporaryPath)) {
+        throw new InvalidArgumentException('Invalid uploaded file.');
+    }
+
+    if ($target_dir === '') {
+        throw new InvalidArgumentException('The upload directory cannot be empty.');
+    }
+
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if (!isset($allowedMimeTypes[$extension])) {
+        throw new InvalidArgumentException('Only JPG, JPEG, PNG, and WEBP images are allowed.');
+    }
+
+    $actualSize = filesize($temporaryPath);
+    if ($actualSize === false) {
+        throw new RuntimeException('Unable to determine the uploaded file size.');
+    }
+
+    if ($actualSize > $maxSize || (isset($file['size']) && (int) $file['size'] > $maxSize)) {
+        throw new InvalidArgumentException('The image must not exceed 2 MB.');
+    }
+
+    $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+    if ($fileInfo === false) {
+        throw new RuntimeException('Unable to inspect the uploaded file type.');
+    }
+
+    $mimeType = finfo_file($fileInfo, $temporaryPath);
+    finfo_close($fileInfo);
+
+    if ($mimeType !== $allowedMimeTypes[$extension]) {
+        throw new InvalidArgumentException('The uploaded file content does not match an allowed image type.');
+    }
+
+    if (!is_dir($target_dir) && !mkdir($target_dir, 0755, true) && !is_dir($target_dir)) {
+        throw new RuntimeException('Unable to create the image upload directory.');
+    }
+
+    if (!is_writable($target_dir)) {
+        throw new RuntimeException('The image upload directory is not writable.');
+    }
+
+    $fileName = bin2hex(random_bytes(16)) . '.' . $extension;
+    $destination = rtrim($target_dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
+
+    if (!move_uploaded_file($temporaryPath, $destination)) {
+        throw new RuntimeException('Unable to save the uploaded image.');
+    }
+
+    return $fileName;
+}
