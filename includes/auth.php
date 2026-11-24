@@ -17,18 +17,23 @@ function is_logged_in(): bool
     return $validAdminId && is_string($adminName) && trim($adminName) !== '';
 }
 
-function require_admin(): void
+function admin_base_url(): string
 {
-    if (is_logged_in()) {
-        return;
-    }
-
     $basePath = parse_url(BASE_URL, PHP_URL_PATH);
     $basePath = is_string($basePath) ? rtrim($basePath, '/') : '';
     if (str_ends_with($basePath, '/public')) {
         $basePath = substr($basePath, 0, -strlen('/public'));
     }
 
-    header('Location: ' . rtrim($basePath, '/') . '/admin/login.php', true, 302);
+    return rtrim($basePath, '/') . '/admin';
+}
+
+function require_admin(): void
+{
+    if (is_logged_in()) {
+        return;
+    }
+
+    header('Location: ' . admin_base_url() . '/login.php', true, 302);
     exit;
 }

@@ -96,72 +96,72 @@ function upload_image(array $file, string $target_dir): string
     ];
 
     if (!isset($file['error']) || !is_int($file['error'])) {
-        throw new InvalidArgumentException('Invalid upload data.');
+        throw new InvalidArgumentException('Data unggahan tidak valid.');
     }
 
     if ($file['error'] !== UPLOAD_ERR_OK) {
         $errors = [
-            UPLOAD_ERR_INI_SIZE => 'The uploaded file exceeds the server size limit.',
-            UPLOAD_ERR_FORM_SIZE => 'The uploaded file exceeds the form size limit.',
-            UPLOAD_ERR_PARTIAL => 'The uploaded file was only partially received.',
-            UPLOAD_ERR_NO_FILE => 'No file was uploaded.',
-            UPLOAD_ERR_NO_TMP_DIR => 'The server upload directory is missing.',
-            UPLOAD_ERR_CANT_WRITE => 'The server could not save the uploaded file.',
-            UPLOAD_ERR_EXTENSION => 'A server extension stopped the upload.',
+            UPLOAD_ERR_INI_SIZE => 'Ukuran file melebihi batas server.',
+            UPLOAD_ERR_FORM_SIZE => 'Ukuran file melebihi batas formulir.',
+            UPLOAD_ERR_PARTIAL => 'File hanya terunggah sebagian.',
+            UPLOAD_ERR_NO_FILE => 'Tidak ada file yang diunggah.',
+            UPLOAD_ERR_NO_TMP_DIR => 'Folder sementara unggahan tidak tersedia.',
+            UPLOAD_ERR_CANT_WRITE => 'Server tidak dapat menyimpan file yang diunggah.',
+            UPLOAD_ERR_EXTENSION => 'Ekstensi server menghentikan proses unggah.',
         ];
 
-        throw new RuntimeException($errors[$file['error']] ?? 'The file upload failed.');
+        throw new RuntimeException($errors[$file['error']] ?? 'Proses unggah file gagal.');
     }
 
     $temporaryPath = $file['tmp_name'] ?? null;
     $originalName = $file['name'] ?? null;
     if (!is_string($temporaryPath) || !is_string($originalName) || !is_uploaded_file($temporaryPath)) {
-        throw new InvalidArgumentException('Invalid uploaded file.');
+        throw new InvalidArgumentException('File yang diunggah tidak valid.');
     }
 
     if ($target_dir === '') {
-        throw new InvalidArgumentException('The upload directory cannot be empty.');
+        throw new InvalidArgumentException('Folder tujuan unggahan tidak boleh kosong.');
     }
 
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
     if (!isset($allowedMimeTypes[$extension])) {
-        throw new InvalidArgumentException('Only JPG, JPEG, PNG, and WEBP images are allowed.');
+        throw new InvalidArgumentException('Hanya gambar JPG, JPEG, PNG, dan WEBP yang diizinkan.');
     }
 
     $actualSize = filesize($temporaryPath);
     if ($actualSize === false) {
-        throw new RuntimeException('Unable to determine the uploaded file size.');
+        throw new RuntimeException('Ukuran file yang diunggah tidak dapat diperiksa.');
     }
 
     if ($actualSize > $maxSize || (isset($file['size']) && (int) $file['size'] > $maxSize)) {
-        throw new InvalidArgumentException('The image must not exceed 2 MB.');
+        throw new InvalidArgumentException('Ukuran gambar maksimal 2 MB.');
     }
 
     $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
     if ($fileInfo === false) {
-        throw new RuntimeException('Unable to inspect the uploaded file type.');
+        throw new RuntimeException('Tipe file yang diunggah tidak dapat diperiksa.');
     }
 
     $mimeType = finfo_file($fileInfo, $temporaryPath);
     finfo_close($fileInfo);
 
     if ($mimeType !== $allowedMimeTypes[$extension]) {
-        throw new InvalidArgumentException('The uploaded file content does not match an allowed image type.');
+        throw new InvalidArgumentException('Konten file tidak sesuai dengan tipe gambar yang diizinkan.');
     }
 
     if (!is_dir($target_dir) && !mkdir($target_dir, 0755, true) && !is_dir($target_dir)) {
-        throw new RuntimeException('Unable to create the image upload directory.');
+        throw new RuntimeException('Folder unggahan gambar tidak dapat dibuat.');
     }
 
     if (!is_writable($target_dir)) {
-        throw new RuntimeException('The image upload directory is not writable.');
+        throw new RuntimeException('Folder unggahan gambar tidak dapat ditulisi.');
     }
 
     $fileName = bin2hex(random_bytes(16)) . '.' . $extension;
     $destination = rtrim($target_dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
 
     if (!move_uploaded_file($temporaryPath, $destination)) {
-        throw new RuntimeException('Unable to save the uploaded image.');
+        throw new RuntimeException('Gambar yang diunggah tidak dapat disimpan.');
     }
 
     return $fileName;
