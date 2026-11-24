@@ -37,6 +37,22 @@ function sanitize(string|int|float|bool|null $data): string
     return htmlspecialchars((string) $data, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function product_image_url(?string $fileName): ?string
+{
+    if (
+        $fileName === null
+        || preg_match('/\A[a-f0-9]{32}\.(?:jpg|jpeg|png|webp)\z/', $fileName) !== 1
+    ) {
+        return null;
+    }
+
+    if (!defined('BASE_URL')) {
+        throw new RuntimeException('BASE_URL must be configured before generating product image URLs.');
+    }
+
+    return BASE_URL . '/uploads/products/' . rawurlencode($fileName);
+}
+
 function format_rupiah(int|float|string $number): string
 {
     if (!is_numeric($number)) {

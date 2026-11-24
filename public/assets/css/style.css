@@ -1,0 +1,178 @@
+:root {
+    --cafe-green: #244b3b;
+    --cafe-green-dark: #19382c;
+    --cafe-cream: #f7f4ed;
+    --cafe-ink: #202b25;
+    --cafe-muted: #68756d;
+    --cafe-gold: #e5bf83;
+}
+
+body {
+    color: var(--cafe-ink);
+    background: #fff;
+}
+
+.navbar-brand {
+    color: var(--cafe-green-dark);
+}
+
+.brand-mark {
+    width: 2.4rem;
+    height: 2.4rem;
+    color: #fff;
+    background: var(--cafe-green);
+}
+
+.navbar .nav-link {
+    color: #46564c;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+    color: var(--cafe-green);
+}
+
+.btn-success {
+    --bs-btn-bg: var(--cafe-green);
+    --bs-btn-border-color: var(--cafe-green);
+    --bs-btn-hover-bg: var(--cafe-green-dark);
+    --bs-btn-hover-border-color: var(--cafe-green-dark);
+    --bs-btn-active-bg: var(--cafe-green-dark);
+    --bs-btn-active-border-color: var(--cafe-green-dark);
+}
+
+.text-success {
+    color: var(--cafe-green) !important;
+}
+
+.hero-panel {
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+    background:
+        radial-gradient(circle at 78% 34%, rgba(229, 191, 131, .34), transparent 16rem),
+        linear-gradient(125deg, #19382c 0%, #2d5a45 62%, #638169 100%);
+    border-radius: 1.5rem;
+}
+
+.hero-panel::after {
+    position: absolute;
+    right: -3rem;
+    bottom: -7rem;
+    width: 24rem;
+    height: 24rem;
+    content: "";
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2.2rem rgba(255, 255, 255, .04), 0 0 0 4.5rem rgba(255, 255, 255, .035);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-kicker {
+    color: #f1d8ae;
+    letter-spacing: .12em;
+}
+
+.hero-title {
+    max-width: 13ch;
+    font-size: clamp(2.4rem, 6vw, 4.5rem);
+    line-height: 1.05;
+}
+
+.hero-illustration {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: min(100%, 20rem);
+    aspect-ratio: 1;
+    place-items: center;
+    margin-inline: auto;
+    color: #f9e4c4;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .2), rgba(255, 255, 255, .05));
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 50%;
+    box-shadow: inset 0 0 3rem rgba(255, 255, 255, .08), 0 1.5rem 4rem rgba(9, 29, 19, .16);
+}
+
+.hero-illustration i {
+    font-size: clamp(6rem, 17vw, 10rem);
+}
+
+.section-kicker {
+    color: var(--cafe-green);
+    letter-spacing: .12em;
+}
+
+.product-card {
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid #e8ece8;
+    border-radius: 1rem;
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 1rem 2rem rgba(27, 55, 39, .09);
+}
+
+.product-image {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--cafe-cream);
+}
+
+.product-image-placeholder {
+    display: grid;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    place-items: center;
+    color: #8b9b8e;
+    background: var(--cafe-cream);
+    font-size: 3rem;
+}
+
+.category-pill {
+    color: var(--cafe-green);
+    background: #edf4ee;
+}
+
+.contact-panel {
+    background: var(--cafe-cream);
+    border-radius: 1.25rem;
+}
+
+.contact-icon {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    color: var(--cafe-green);
+    background: #e8efe7;
+    border-radius: .8rem;
+}
+
+.site-footer {
+    color: #fff;
+    background: var(--cafe-green-dark);
+}
+
+#app-feedback:empty {
+    display: none !important;
+}
+
+@media (max-width: 575.98px) {
+    .hero-panel {
+        border-radius: 1rem;
+    }
+
+    .hero-title {
+        font-size: 2.6rem;
+    }
+}

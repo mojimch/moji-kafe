@@ -65,18 +65,6 @@ function product_image_directory(): string
         . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'products';
 }
 
-function product_image_url(?string $fileName): ?string
-{
-    if (
-        $fileName === null
-        || preg_match('/\A[a-f0-9]{32}\.(?:jpg|jpeg|png|webp)\z/', $fileName) !== 1
-    ) {
-        return null;
-    }
-
-    return BASE_URL . '/uploads/products/' . rawurlencode($fileName);
-}
-
 function remove_product_image(?string $fileName): bool
 {
     if ($fileName === null || $fileName === '') {
