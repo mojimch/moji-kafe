@@ -7,6 +7,7 @@ define('BASE_URL', rtrim(getenv('BASE_URL') ?: 'http://localhost/moji-kafe/publi
 define('CAFE_ADDRESS', getenv('CAFE_ADDRESS') ?: 'Informasi lokasi belum diatur.');
 define('CAFE_PHONE', getenv('CAFE_PHONE') ?: '');
 define('CAFE_OPENING_HOURS', getenv('CAFE_OPENING_HOURS') ?: 'Hubungi kafe untuk informasi jam operasional.');
+define('CAFE_QRIS_IMAGE_PATH', trim(getenv('CAFE_QRIS_IMAGE_PATH') ?: ''));
 
 define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
