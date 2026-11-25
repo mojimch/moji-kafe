@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS `tables` (
 CREATE TABLE IF NOT EXISTS bookings (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     booking_code VARCHAR(32) NOT NULL,
+    access_token_hash CHAR(64) NULL,
     customer_name VARCHAR(150) NOT NULL,
     customer_phone VARCHAR(30) NOT NULL,
     table_id INT UNSIGNED NOT NULL,
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE TABLE IF NOT EXISTS orders (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     order_code VARCHAR(32) NOT NULL,
+    access_token_hash CHAR(64) NULL,
     customer_name VARCHAR(150) NOT NULL,
     customer_phone VARCHAR(30) NOT NULL,
     order_type ENUM('dine_in', 'takeaway') NOT NULL,

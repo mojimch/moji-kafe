@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
 $orderCode = is_string($_GET['code'] ?? null) ? trim($_GET['code']) : '';
+$accessToken = is_string($_GET['token'] ?? null) ? trim($_GET['token']) : '';
 $errorMessage = null;
 $order = null;
 $items = [];
@@ -17,7 +18,7 @@ if (array_key_exists('code', $_GET) && $orderCode !== '') {
         $errorMessage = 'Format kode pesanan tidak valid. Gunakan format ORD-YYYYMMDD-XXX.';
     } else {
         $orderQuery = $pdo->prepare(
-            'SELECT o.id, o.order_code, o.order_type, o.table_id, o.subtotal, o.total,
+            'SELECT o.id, o.order_code, o.access_token_hash, o.order_type, o.table_id, o.subtotal, o.total,
                     o.payment_method, o.payment_status, o.order_status, o.created_at,
                     t.table_number
              FROM orders o
@@ -27,10 +28,13 @@ if (array_key_exists('code', $_GET) && $orderCode !== '') {
         $orderQuery->execute(['order_code' => $orderCode]);
         $order = $orderQuery->fetch();
 
-        if ($order === false) {
+        if (
+            $order === false
+            || !verify_public_access($accessToken, $order['access_token_hash'], $order['created_at'])
+        ) {
             $order = null;
             http_response_code(404);
-            $errorMessage = 'Pesanan tidak ditemukan. Periksa kembali kode pesananmu.';
+            $errorMessage = 'Pesanan tidak ditemukan atau token akses tidak valid.';
         } else {
             $itemQuery = $pdo->prepare(
                 'SELECT product_name, variant_name, price, quantity, subtotal
@@ -74,7 +78,7 @@ require __DIR__ . '/../includes/header.php';
     <div class="mb-4">
         <p class="section-kicker text-uppercase small fw-semibold mb-2">Informasi pesanan</p>
         <h1 id="check-order-heading" class="display-6 fw-bold mb-2">Cek status pesanan</h1>
-        <p class="text-secondary mb-0">Masukkan kode pesanan yang diberikan setelah checkout.</p>
+        <p class="text-secondary mb-0">Masukkan kode pesanan dan token akses yang diberikan setelah checkout.</p>
     </div>
 
     <section class="card border-0 shadow-sm mb-4" aria-label="Form pencarian pesanan">
@@ -93,6 +97,20 @@ require __DIR__ . '/../includes/header.php';
                         maxlength="16"
                         required
                     >
+                </div>
+                <div class="col-12 col-md-8">
+                    <label for="order-access-token" class="form-label">Token akses</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="order-access-token"
+                        name="token"
+                        value="<?= sanitize($accessToken) ?>"
+                        pattern="[a-f0-9]{64}"
+                        maxlength="64"
+                        autocomplete="off"
+                    >
+                    <div class="form-text">Wajib untuk pesanan baru. Kode lama tanpa token hanya dapat dicek selama masa transisi 7 hari.</div>
                 </div>
                 <div class="col-12 col-md-4">
                     <button type="submit" class="btn btn-success w-100">
@@ -138,8 +156,12 @@ require __DIR__ . '/../includes/header.php';
                         <h2 id="order-details-heading" class="h4 fw-bold mb-1">Rincian pesanan</h2>
                         <span class="small text-secondary">Kode pesanan</span>
                         <strong class="text-success d-block fs-5"><?= sanitize($order['order_code']) ?></strong>
+                        <?php if ($accessToken !== ''): ?>
+                            <span class="small text-secondary d-block mt-2">Token akses — simpan secara pribadi</span>
+                            <code class="user-select-all"><?= sanitize($accessToken) ?></code>
+                        <?php endif; ?>
                     </div>
-                    <a href="<?= sanitize(BASE_URL) ?>/payment.php?code=<?= rawurlencode($order['order_code']) ?>"
+                    <a href="<?= sanitize(BASE_URL) ?>/payment.php?code=<?= rawurlencode($order['order_code']) ?>&amp;token=<?= rawurlencode($accessToken) ?>"
                        class="btn btn-outline-success">Lihat pembayaran</a>
                 </div>
 

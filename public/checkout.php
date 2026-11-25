@@ -230,12 +230,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 ];
             }
 
+            $accessToken = generate_public_access_token();
             $orderInsert = $pdo->prepare(
                 'INSERT INTO orders
-                    (order_code, customer_name, customer_phone, order_type, table_id,
+                    (order_code, access_token_hash, customer_name, customer_phone, order_type, table_id,
                      subtotal, total, payment_method, payment_status, order_status)
                  VALUES
-                    (:order_code, :customer_name, :customer_phone, :order_type, :table_id,
+                    (:order_code, :access_token_hash, :customer_name, :customer_phone, :order_type, :table_id,
                      :subtotal, :total, :payment_method, :payment_status, :order_status)'
             );
             $orderCode = null;
@@ -244,6 +245,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 try {
                     $orderInsert->execute([
                         'order_code' => $candidateCode,
+                        'access_token_hash' => hash('sha256', $accessToken),
                         'customer_name' => $customerName,
                         'customer_phone' => $customerPhone,
                         'order_type' => $formValues['order_type'],
@@ -288,7 +290,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
 
             $pdo->commit();
-            $paymentUrl = BASE_URL . '/payment.php?code=' . rawurlencode($orderCode);
+            $paymentUrl = BASE_URL . '/payment.php?code=' . rawurlencode($orderCode)
+                . '&token=' . rawurlencode($accessToken);
             $paymentUrlJson = json_encode(
                 $paymentUrl,
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR

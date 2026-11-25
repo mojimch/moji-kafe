@@ -211,12 +211,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 }
             }
 
+            $accessToken = generate_public_access_token();
             $insert = $pdo->prepare(
                 'INSERT INTO bookings
-                    (booking_code, customer_name, customer_phone, table_id, booking_date,
+                    (booking_code, access_token_hash, customer_name, customer_phone, table_id, booking_date,
                      start_time, end_time, guest_count, status)
                  VALUES
-                    (:booking_code, :customer_name, :customer_phone, :table_id, :booking_date,
+                    (:booking_code, :access_token_hash, :customer_name, :customer_phone, :table_id, :booking_date,
                      :start_time, :end_time, :guest_count, :status)'
             );
             $bookingCode = null;
@@ -225,6 +226,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 try {
                     $insert->execute([
                         'booking_code' => $candidateCode,
+                        'access_token_hash' => hash('sha256', $accessToken),
                         'customer_name' => $customerName,
                         'customer_phone' => $customerPhone,
                         'table_id' => $tableId,
@@ -248,7 +250,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             }
 
             $pdo->commit();
-            header('Location: ' . BASE_URL . '/check-booking.php?code=' . rawurlencode($bookingCode), true, 303);
+            header(
+                'Location: ' . BASE_URL . '/check-booking.php?code=' . rawurlencode($bookingCode)
+                    . '&token=' . rawurlencode($accessToken),
+                true,
+                303
+            );
             exit;
         } catch (InvalidArgumentException $exception) {
             if ($pdo->inTransaction()) {

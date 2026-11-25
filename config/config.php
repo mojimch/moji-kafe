@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 define('APP_NAME', getenv('APP_NAME') ?: 'Moji Kafe');
+define('APP_ENV', strtolower(trim(getenv('APP_ENV') ?: 'production')));
 define('BASE_URL', rtrim(getenv('BASE_URL') ?: 'http://localhost/moji-kafe/public', '/'));
 define('CAFE_ADDRESS', getenv('CAFE_ADDRESS') ?: 'Informasi lokasi belum diatur.');
 define('CAFE_PHONE', getenv('CAFE_PHONE') ?: '');

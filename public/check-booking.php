@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
 $bookingCode = is_string($_GET['code'] ?? null) ? trim($_GET['code']) : '';
+$accessToken = is_string($_GET['token'] ?? null) ? trim($_GET['token']) : '';
 $errorMessage = null;
 $booking = null;
 
@@ -15,7 +16,7 @@ if (array_key_exists('code', $_GET) && $bookingCode !== '') {
         $errorMessage = 'Format kode reservasi tidak valid. Gunakan format BOOK-YYYYMMDD-XXX.';
     } else {
         $bookingQuery = $pdo->prepare(
-            'SELECT b.booking_code, b.booking_date, b.start_time, b.end_time, b.guest_count,
+            'SELECT b.booking_code, b.access_token_hash, b.booking_date, b.start_time, b.end_time, b.guest_count,
                     b.status, b.created_at, t.table_number
              FROM bookings b
              INNER JOIN `tables` t ON t.id = b.table_id
@@ -24,10 +25,13 @@ if (array_key_exists('code', $_GET) && $bookingCode !== '') {
         $bookingQuery->execute(['booking_code' => $bookingCode]);
         $booking = $bookingQuery->fetch();
 
-        if ($booking === false) {
+        if (
+            $booking === false
+            || !verify_public_access($accessToken, $booking['access_token_hash'], $booking['created_at'])
+        ) {
             $booking = null;
             http_response_code(404);
-            $errorMessage = 'Reservasi tidak ditemukan. Periksa kembali kode reservasi.';
+            $errorMessage = 'Reservasi tidak ditemukan atau token akses tidak valid.';
         }
     }
 }
@@ -54,7 +58,7 @@ require __DIR__ . '/../includes/header.php';
     <div class="mb-4">
         <p class="section-kicker text-uppercase small fw-semibold mb-2">Informasi kunjunganmu</p>
         <h1 id="check-booking-heading" class="display-6 fw-bold mb-2">Cek status reservasi</h1>
-        <p class="text-secondary mb-0">Masukkan kode reservasi yang diberikan setelah permintaan berhasil dicatat.</p>
+        <p class="text-secondary mb-0">Masukkan kode reservasi dan token akses yang diberikan setelah permintaan berhasil dicatat.</p>
     </div>
 
     <section class="card border-0 shadow-sm mb-4" aria-label="Form pencarian reservasi">
@@ -73,6 +77,20 @@ require __DIR__ . '/../includes/header.php';
                         maxlength="17"
                         required
                     >
+                </div>
+                <div class="col-12 col-md-8">
+                    <label for="booking-access-token" class="form-label">Token akses</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="booking-access-token"
+                        name="token"
+                        value="<?= sanitize($accessToken) ?>"
+                        pattern="[a-f0-9]{64}"
+                        maxlength="64"
+                        autocomplete="off"
+                    >
+                    <div class="form-text">Wajib untuk reservasi baru. Kode lama tanpa token hanya dapat dicek selama masa transisi 7 hari.</div>
                 </div>
                 <div class="col-12 col-md-4">
                     <button type="submit" class="btn btn-success w-100">
@@ -103,6 +121,10 @@ require __DIR__ . '/../includes/header.php';
                         <h2 id="booking-details-heading" class="h4 fw-bold mb-1">Rincian reservasi</h2>
                         <span class="small text-secondary">Kode reservasi</span>
                         <strong class="text-success d-block fs-5"><?= sanitize($booking['booking_code']) ?></strong>
+                        <?php if ($accessToken !== ''): ?>
+                            <span class="small text-secondary d-block mt-2">Token akses — simpan secara pribadi</span>
+                            <code class="user-select-all"><?= sanitize($accessToken) ?></code>
+                        <?php endif; ?>
                     </div>
                     <span class="badge text-bg-<?= sanitize($statusStyle) ?> fs-6"><?= sanitize($statusLabel) ?></span>
                 </div>

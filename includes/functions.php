@@ -89,6 +89,36 @@ function generate_booking_code(): string
     return sprintf('BOOK-%s-%03d', date('Ymd'), random_int(0, 999));
 }
 
+function generate_public_access_token(): string
+{
+    return bin2hex(random_bytes(32));
+}
+
+function hash_public_access_token(mixed $token): ?string
+{
+    if (!is_string($token) || preg_match('/\A[a-f0-9]{64}\z/', $token) !== 1) {
+        return null;
+    }
+
+    return hash('sha256', $token);
+}
+
+function verify_public_access(mixed $token, mixed $tokenHash, mixed $createdAt): bool
+{
+    if (is_string($tokenHash) && $tokenHash !== '') {
+        $providedHash = hash_public_access_token($token);
+        return $providedHash !== null && hash_equals($tokenHash, $providedHash);
+    }
+
+    if ($tokenHash !== null || !is_string($createdAt)) {
+        return false;
+    }
+
+    $createdAtTimestamp = strtotime($createdAt);
+    return $createdAtTimestamp !== false
+        && $createdAtTimestamp >= time() - (7 * 24 * 60 * 60);
+}
+
 function is_valid_booking_code(mixed $code): bool
 {
     if (

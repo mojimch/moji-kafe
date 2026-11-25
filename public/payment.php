@@ -9,6 +9,7 @@ require_once __DIR__ . '/../includes/csrf.php';
 start_secure_session();
 
 $orderCode = is_string($_GET['code'] ?? null) ? trim($_GET['code']) : '';
+$accessToken = is_string($_GET['token'] ?? null) ? trim($_GET['token']) : '';
 $errorMessage = null;
 $uploadErrorMessage = null;
 $successMessage = null;
@@ -38,7 +39,7 @@ if (!is_valid_order_code($orderCode)) {
     $errorMessage = 'Kode pesanan tidak valid.';
 } else {
     $orderQuery = $pdo->prepare(
-        'SELECT o.id, o.order_code, o.order_type, o.table_id, o.subtotal, o.total,
+        'SELECT o.id, o.order_code, o.access_token_hash, o.order_type, o.table_id, o.subtotal, o.total,
                 o.payment_method, o.payment_status, o.order_status, o.created_at,
                 t.table_number
          FROM orders o
@@ -48,10 +49,13 @@ if (!is_valid_order_code($orderCode)) {
     $orderQuery->execute(['order_code' => $orderCode]);
     $order = $orderQuery->fetch();
 
-    if ($order === false) {
+    if (
+        $order === false
+        || !verify_public_access($accessToken, $order['access_token_hash'], $order['created_at'])
+    ) {
         $order = null;
         http_response_code(404);
-        $errorMessage = 'Pesanan tidak ditemukan. Periksa kembali kode pesananmu.';
+        $errorMessage = 'Pesanan tidak ditemukan atau token akses tidak valid.';
     } else {
         $itemQuery = $pdo->prepare(
             'SELECT product_name, variant_name, price, quantity, subtotal
@@ -192,8 +196,12 @@ require __DIR__ . '/../includes/header.php';
                                 <h2 id="order-summary-heading" class="h5 fw-bold mb-1">Rincian pesanan</h2>
                                 <p class="small text-secondary mb-0">Kode pesanan</p>
                                 <strong class="text-success fs-5"><?= sanitize($order['order_code']) ?></strong>
+                                <?php if ($accessToken !== ''): ?>
+                                    <span class="small text-secondary d-block mt-2">Token akses — simpan secara pribadi</span>
+                                    <code class="user-select-all"><?= sanitize($accessToken) ?></code>
+                                <?php endif; ?>
                             </div>
-                            <a href="<?= sanitize(BASE_URL) ?>/check-order.php?code=<?= rawurlencode($order['order_code']) ?>"
+                            <a href="<?= sanitize(BASE_URL) ?>/check-order.php?code=<?= rawurlencode($order['order_code']) ?>&amp;token=<?= rawurlencode($accessToken) ?>"
                                class="btn btn-sm btn-outline-success">Cek status</a>
                         </div>
 
@@ -281,6 +289,7 @@ require __DIR__ . '/../includes/header.php';
                                     <form method="post" action="<?= sanitize(BASE_URL) ?>/upload-proof.php" enctype="multipart/form-data" class="mt-3">
                                         <?= $csrfField ?>
                                         <input type="hidden" name="order_code" value="<?= sanitize($order['order_code']) ?>">
+                                        <input type="hidden" name="access_token" value="<?= sanitize($accessToken) ?>">
                                         <div class="mb-3">
                                             <label for="payment-proof" class="form-label">Bukti pembayaran</label>
                                             <input

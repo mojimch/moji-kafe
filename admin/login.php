@@ -39,7 +39,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $statement->execute(['username' => $username]);
                 $admin = $statement->fetch();
 
-                if (is_array($admin) && password_verify($password, $admin['password'])) {
+                $isDefaultSeedPassword = APP_ENV === 'production' && $password === 'admin123';
+                if (
+                    is_array($admin)
+                    && password_verify($password, $admin['password'])
+                    && !$isDefaultSeedPassword
+                ) {
                     if (!session_regenerate_id(true)) {
                         throw new RuntimeException('Unable to regenerate the admin session ID.');
                     }

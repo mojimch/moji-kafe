@@ -12,6 +12,7 @@ $pageTitle = isset($pageTitle) && is_string($pageTitle) ? $pageTitle : 'Dashboar
 $adminBaseUrl = admin_base_url();
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $adminName = (string) ($_SESSION['admin_name'] ?? '');
+$isDashboard = is_string($currentPath) && str_ends_with($currentPath, '/dashboard.php');
 $navigationItems = [
     ['label' => 'Dashboard', 'path' => 'dashboard.php', 'icon' => 'bi-speedometer2'],
     ['label' => 'Pesanan', 'path' => 'orders/index.php', 'icon' => 'bi-receipt'],
@@ -44,15 +45,88 @@ $navigationItems = [
             background: #f5f7f5;
         }
 
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .admin-content {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
         .admin-sidebar {
             --bs-offcanvas-width: 17rem;
             background: var(--admin-ink);
             color: #fff;
+            position: fixed;
+            inset: 0 auto 0 0;
+            z-index: 1045;
+            display: flex;
+            flex-direction: column;
+            width: min(17rem, 85vw);
+            height: 100vh;
+            visibility: hidden;
+            transform: translateX(-100%);
+            transition: transform .3s ease-in-out, visibility .3s ease-in-out;
+        }
+
+        .admin-sidebar.show,
+        .admin-sidebar.showing {
+            visibility: visible;
+            transform: translateX(0);
+        }
+
+        .admin-sidebar .offcanvas-body {
+            overflow-y: auto;
+        }
+
+        .admin-sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1040;
+            padding: 0;
+            border: 0;
+            background: rgba(0, 0, 0, .5);
+        }
+
+        .admin-sidebar-backdrop[hidden] {
+            display: none !important;
+        }
+
+        .admin-menu-toggle {
+            display: inline-flex !important;
         }
 
         @media (min-width: 992px) {
             .admin-sidebar {
+                position: static !important;
+                flex: 0 0 17rem;
                 width: 17rem !important;
+                height: auto !important;
+                min-height: 100vh;
+                visibility: visible !important;
+                transform: none !important;
+                transition: none !important;
+                z-index: auto;
+            }
+
+            .admin-sidebar .offcanvas-header {
+                display: flex !important;
+            }
+
+            .admin-sidebar .btn-close {
+                display: none !important;
+            }
+
+            .admin-menu-toggle {
+                display: none !important;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .admin-sidebar .offcanvas-body {
+                min-height: 100%;
             }
         }
 
@@ -83,7 +157,7 @@ $navigationItems = [
     </style>
 </head>
 <body>
-<div class="d-flex min-vh-100">
+<div class="d-flex min-vh-100 admin-layout">
     <aside
         class="admin-sidebar offcanvas offcanvas-lg offcanvas-start flex-shrink-0"
         tabindex="-1"
@@ -97,7 +171,7 @@ $navigationItems = [
                 </span>
                 <span id="adminSidebarLabel" class="fw-semibold"><?= sanitize(APP_NAME) ?></span>
             </a>
-            <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" aria-label="Tutup menu"></button>
+            <button type="button" class="btn-close btn-close-white d-lg-none admin-sidebar-close" aria-label="Tutup menu"></button>
         </div>
         <div class="offcanvas-body p-3 d-flex flex-column">
             <p class="text-uppercase small fw-semibold text-secondary mb-2 px-2">Menu Utama</p>
@@ -132,29 +206,81 @@ $navigationItems = [
             </div>
         </div>
     </aside>
+    <button type="button" id="adminSidebarBackdrop" class="admin-sidebar-backdrop" aria-label="Tutup menu navigasi" hidden></button>
 
-    <div class="flex-grow-1 min-w-0">
+    <div class="flex-grow-1 min-w-0 admin-content">
         <header class="navbar bg-white border-bottom px-3 px-lg-4 py-3">
             <div class="d-flex align-items-center gap-3">
                 <button
                     type="button"
-                    class="btn btn-outline-secondary d-lg-none"
-                    data-bs-toggle="offcanvas"
-                    data-bs-target="#adminSidebar"
+                    class="btn btn-outline-secondary d-lg-none admin-menu-toggle"
                     aria-controls="adminSidebar"
+                    aria-expanded="false"
                     aria-label="Buka menu navigasi"
                 >
                     <i class="bi bi-list fs-5" aria-hidden="true"></i>
+                    <span class="ms-1">Menu</span>
                 </button>
                 <div>
                     <span class="text-uppercase text-secondary small fw-semibold">Panel Admin</span>
                     <h1 class="h4 mb-0"><?= sanitize($pageTitle) ?></h1>
                 </div>
             </div>
+            <?php if (!$isDashboard): ?>
+                <a href="<?= sanitize($adminBaseUrl) ?>/dashboard.php" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-house-door me-1" aria-hidden="true"></i>
+                    Dashboard
+                </a>
+            <?php endif; ?>
             <span class="badge rounded-pill text-bg-light border d-none d-sm-inline-flex align-items-center gap-2">
                 <i class="bi bi-person-circle text-success" aria-hidden="true"></i>
                 <?= sanitize($adminName) ?>
             </span>
         </header>
+        <script>
+            (() => {
+                const sidebar = document.getElementById('adminSidebar');
+                const toggle = document.querySelector('.admin-menu-toggle');
+                const closeButton = document.querySelector('.admin-sidebar-close');
+                const backdrop = document.getElementById('adminSidebarBackdrop');
+                const mobileViewport = window.matchMedia('(max-width: 991.98px)');
+                if (!sidebar || !toggle || !closeButton || !backdrop) {
+                    return;
+                }
+
+                const setMenuOpen = (open) => {
+                    const shouldOpen = open && mobileViewport.matches;
+                    sidebar.classList.toggle('show', shouldOpen);
+                    backdrop.hidden = !shouldOpen;
+                    toggle.setAttribute('aria-expanded', String(shouldOpen));
+                    if (shouldOpen) {
+                        closeButton.focus();
+                    } else if (document.activeElement === closeButton) {
+                        toggle.focus();
+                    }
+                };
+
+                toggle.addEventListener('click', () => setMenuOpen(!sidebar.classList.contains('show')));
+                closeButton.addEventListener('click', () => setMenuOpen(false));
+                backdrop.addEventListener('click', () => setMenuOpen(false));
+                sidebar.querySelectorAll('a').forEach((link) => {
+                    link.addEventListener('click', () => {
+                        if (mobileViewport.matches) {
+                            setMenuOpen(false);
+                        }
+                    });
+                });
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && sidebar.classList.contains('show')) {
+                        setMenuOpen(false);
+                    }
+                });
+                mobileViewport.addEventListener('change', (event) => {
+                    if (!event.matches) {
+                        setMenuOpen(false);
+                    }
+                });
+            })();
+        </script>
         <main class="container-fluid p-3 p-lg-4">
         <?php render_admin_flash(); ?>

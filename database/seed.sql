@@ -1,5 +1,6 @@
 USE moji_kafe;
 
+-- Development seed only. Set APP_ENV=development locally; the production default blocks this password.
 INSERT INTO admins (id, name, username, password)
 VALUES (
     1,

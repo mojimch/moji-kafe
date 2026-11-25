@@ -6,7 +6,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/csrf.php';
 
-function redirect_payment_with_flash(string $orderCode, string $type, string $message): never
+function redirect_payment_with_flash(string $orderCode, string $accessToken, string $type, string $message): never
 {
     start_secure_session();
     $_SESSION['payment_upload_flash'] = [
@@ -15,7 +15,12 @@ function redirect_payment_with_flash(string $orderCode, string $type, string $me
         'message' => $message,
     ];
 
-    header('Location: ' . BASE_URL . '/payment.php?code=' . rawurlencode($orderCode), true, 303);
+    header(
+        'Location: ' . BASE_URL . '/payment.php?code=' . rawurlencode($orderCode)
+            . '&token=' . rawurlencode($accessToken),
+        true,
+        303
+    );
     exit;
 }
 
@@ -49,11 +54,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 $orderCode = is_string($_POST['order_code'] ?? null)
     ? strtoupper(trim($_POST['order_code']))
     : '';
+$accessToken = is_string($_POST['access_token'] ?? null)
+    ? trim($_POST['access_token'])
+    : '';
 
 if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
     if (is_valid_order_code($orderCode)) {
         redirect_payment_with_flash(
             $orderCode,
+            $accessToken,
             'danger',
             'Token keamanan tidak valid. Muat ulang halaman pesanan dan coba lagi.'
         );
@@ -70,7 +79,7 @@ try {
     $pdo->beginTransaction();
 
     $orderQuery = $pdo->prepare(
-        'SELECT id, order_code, payment_method, payment_status, order_status, total
+        'SELECT id, order_code, access_token_hash, created_at, payment_method, payment_status, order_status, total
          FROM orders
          WHERE order_code = :order_code
          FOR UPDATE'
@@ -79,6 +88,9 @@ try {
     $order = $orderQuery->fetch();
     if ($order === false) {
         throw new InvalidArgumentException('Pesanan tidak ditemukan. Periksa kembali kode pesananmu.');
+    }
+    if (!verify_public_access($accessToken, $order['access_token_hash'], $order['created_at'])) {
+        throw new InvalidArgumentException('Token akses pesanan tidak valid.');
     }
     if ($order['payment_method'] !== 'qris') {
         throw new InvalidArgumentException('Unggah bukti hanya tersedia untuk pesanan QRIS.');
@@ -148,7 +160,7 @@ try {
     ]);
 
     $pdo->commit();
-    redirect_payment_with_flash($orderCode, 'success', 'Bukti pembayaran berhasil dikirim dan menunggu verifikasi.');
+    redirect_payment_with_flash($orderCode, $accessToken, 'success', 'Bukti pembayaran berhasil dikirim dan menunggu verifikasi.');
 } catch (InvalidArgumentException $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -156,7 +168,7 @@ try {
     if ($storedFileName !== null) {
         remove_uploaded_proof($storedFileName);
     }
-    redirect_payment_with_flash($orderCode, 'danger', $exception->getMessage());
+    redirect_payment_with_flash($orderCode, $accessToken, 'danger', $exception->getMessage());
 } catch (PDOException $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -167,6 +179,7 @@ try {
     error_log('Payment proof database error: ' . $exception->getMessage());
     redirect_payment_with_flash(
         $orderCode,
+        $accessToken,
         'danger',
         'Bukti pembayaran tidak dapat disimpan saat ini. Silakan coba kembali.'
     );
@@ -180,6 +193,7 @@ try {
     error_log('Payment proof processing error: ' . $exception->getMessage());
     redirect_payment_with_flash(
         $orderCode,
+        $accessToken,
         'danger',
         'Server tidak dapat memproses file bukti pembayaran saat ini.'
     );
