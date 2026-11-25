@@ -1,0 +1,48 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    expose:
+      - "80"
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    environment:
+      APP_NAME: "${APP_NAME:-Moji Kafe}"
+      APP_ENV: "${APP_ENV:-production}"
+      BASE_URL: "${BASE_URL:?Set BASE_URL in .env}"
+      CAFE_QRIS_IMAGE_PATH: "${CAFE_QRIS_IMAGE_PATH:-}"
+      DB_HOST: "${DB_HOST:-db}"
+      DB_PORT: "${DB_PORT:-3306}"
+      DB_NAME: "${DB_NAME:-moji_kafe}"
+      DB_USER: "${DB_USER:?Set DB_USER in .env}"
+      DB_PASS: "${DB_PASS:?Set DB_PASS in .env}"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/var/www/html/public/uploads
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: "${DB_NAME:-moji_kafe}"
+      MYSQL_USER: "${DB_USER:?Set DB_USER in .env}"
+      MYSQL_PASSWORD: "${DB_PASS:?Set DB_PASS in .env}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/2_seed.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  db_data:
+  uploads_data:
