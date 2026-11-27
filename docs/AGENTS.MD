@@ -76,7 +76,7 @@ Buatkan fungsi-fungsi pembantu (helpers) dan keamanan dasar pada folder `include
    - Fungsi `is_logged_in()` untuk memvalidasi session admin.
    - Fungsi `require_admin()` untuk meredirect ke `/admin/login.php` jika belum terotentikasi.
 ```
-
+<!--  -->
 ---
 
 ## Step 3: Admin Layout & Authentication
